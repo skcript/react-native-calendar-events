@@ -23,6 +23,7 @@ static NSString *const _recurrenceRule = @"recurrenceRule";
 static NSString *const _occurrenceDate = @"occurrenceDate";
 static NSString *const _isDetached = @"isDetached";
 static NSString *const _availability = @"availability";
+static NSString *const _organizer = @"organizer";
 
 @implementation RNCalendarEvents
 
@@ -47,7 +48,7 @@ RCT_EXPORT_MODULE()
 - (NSString *)authorizationStatusForEventStore
 {
     EKAuthorizationStatus status = [EKEventStore authorizationStatusForEntityType:EKEntityTypeEvent];
-
+    
     switch (status) {
         case EKAuthorizationStatusDenied:
             self.isAccessToEventStoreGranted = NO;
@@ -72,7 +73,7 @@ RCT_EXPORT_MODULE()
     if ([[self authorizationStatusForEventStore] isEqualToString:@"granted"]) {
         return @{@"success": [NSNull null], @"error": @"unauthorized to access calendar"};
     }
-
+    
     EKEvent *calendarEvent = nil;
     NSString *calendarId = [RCTConvert NSString:details[_calendarId]];
     NSString *eventId = [RCTConvert NSString:details[_id]];
@@ -87,90 +88,90 @@ RCT_EXPORT_MODULE()
     NSString *recurrence = [RCTConvert NSString:details[_recurrence]];
     NSDictionary *recurrenceRule = [RCTConvert NSDictionary:details[_recurrenceRule]];
     NSString *availability = [RCTConvert NSString:details[_availability]];
-
+    
     if (eventId) {
         calendarEvent = (EKEvent *)[self.eventStore calendarItemWithIdentifier:eventId];
-
+        
     } else {
         calendarEvent = [EKEvent eventWithEventStore:self.eventStore];
         calendarEvent.calendar = [self.eventStore defaultCalendarForNewEvents];
-
+        
         if (calendarId) {
             EKCalendar *calendar = [self.eventStore calendarWithIdentifier:calendarId];
-
+            
             if (calendar) {
                 calendarEvent.calendar = calendar;
             }
         }
     }
-
+    
     if (title) {
         calendarEvent.title = title;
     }
-
+    
     if (location) {
         calendarEvent.location = location;
     }
-
+    
     if (startDate) {
         calendarEvent.startDate = startDate;
     }
-
+    
     if (endDate) {
         calendarEvent.endDate = endDate;
     }
-
+    
     if (allDay) {
         calendarEvent.allDay = [allDay boolValue];
     }
-
+    
     if (notes) {
         calendarEvent.notes = notes;
     }
-
+    
     if (alarms) {
         calendarEvent.alarms = [self createCalendarEventAlarms:alarms];
     }
-
+    
     if (recurrence) {
         EKRecurrenceRule *rule = [self createRecurrenceRule:recurrence interval:0 occurrence:0 endDate:nil];
         if (rule) {
             calendarEvent.recurrenceRules = [NSArray arrayWithObject:rule];
         }
     }
-
+    
     if (recurrenceRule) {
         NSString *frequency = [RCTConvert NSString:recurrenceRule[@"frequency"]];
         NSInteger interval = [RCTConvert NSInteger:recurrenceRule[@"interval"]];
         NSInteger occurrence = [RCTConvert NSInteger:recurrenceRule[@"occurrence"]];
         NSDate *endDate = [RCTConvert NSDate:recurrenceRule[@"endDate"]];
-
+        
         EKRecurrenceRule *rule = [self createRecurrenceRule:frequency interval:interval occurrence:occurrence endDate:endDate];
         if (rule) {
             calendarEvent.recurrenceRules = [NSArray arrayWithObject:rule];
         }
     }
-
-
+    
+    
     if (availability) {
         calendarEvent.availability = [self availablilityConstantMatchingString:availability];
     }
-
+    
     NSURL *URL = [NSURL URLWithString:[url stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLHostAllowedCharacterSet]]];
     if (URL) {
         calendarEvent.URL = URL;
     }
-
+    
     return [self saveEvent:calendarEvent];
 }
 
 - (NSDictionary *)saveEvent:(EKEvent *)calendarEvent
 {
     NSMutableDictionary *response = [NSMutableDictionary dictionaryWithDictionary:@{@"success": [NSNull null], @"error": [NSNull null]}];
-
+    
     NSError *error = nil;
     BOOL success = [self.eventStore saveEvent:calendarEvent span:EKSpanFutureEvents commit:YES error:&error];
-
+    
     if (!success) {
         [response setValue:[error.userInfo valueForKey:@"NSLocalizedDescription"] forKey:@"error"];
     } else {
@@ -184,11 +185,11 @@ RCT_EXPORT_MODULE()
     if ([[self authorizationStatusForEventStore] isEqualToString:@"granted"]) {
         return @{@"success": [NSNull null], @"error": @"unauthorized to access calendar"};
     }
-
+    
     NSMutableDictionary *response = [NSMutableDictionary dictionaryWithDictionary:@{@"success": [NSNull null]}];
-
+    
     EKEvent *calendarEvent = (EKEvent *)[self.eventStore calendarItemWithIdentifier:eventId];
-
+    
     if (calendarEvent) {
         [response setValue:[self serializeCalendarEvent:calendarEvent] forKey:@"success"];
     }
@@ -200,14 +201,14 @@ RCT_EXPORT_MODULE()
     if ([[self authorizationStatusForEventStore] isEqualToString:@"granted"]) {
         return @{@"success": [NSNull null], @"error": @"unauthorized to access calendar"};
     }
-
+    
     NSMutableDictionary *response = [NSMutableDictionary dictionaryWithDictionary:@{@"success": [NSNull null], @"error": [NSNull null]}];
-
+    
     EKEvent *calendarEvent = (EKEvent *)[self.eventStore calendarItemWithIdentifier:eventId];
-
+    
     NSError *error = nil;
     BOOL success = [self.eventStore removeEvent:calendarEvent span:span commit:YES error:&error];
-
+    
     if (!success) {
         [response setValue:[error.userInfo valueForKey:@"NSLocalizedDescription"] forKey:@"error"];
     } else {
@@ -223,7 +224,7 @@ RCT_EXPORT_MODULE()
 {
     EKAlarm *calendarEventAlarm = nil;
     id alarmDate = [alarm valueForKey:@"date"];
-
+    
     if ([alarmDate isKindOfClass:[NSString class]]) {
         calendarEventAlarm = [EKAlarm alarmWithAbsoluteDate:[RCTConvert NSDate:alarmDate]];
     } else if ([alarmDate isKindOfClass:[NSNumber class]]) {
@@ -232,17 +233,17 @@ RCT_EXPORT_MODULE()
     } else {
         calendarEventAlarm = [[EKAlarm alloc] init];
     }
-
+    
     if ([alarm objectForKey:@"structuredLocation"] && [[alarm objectForKey:@"structuredLocation"] count]) {
         NSDictionary *locationOptions = [alarm valueForKey:@"structuredLocation"];
         NSDictionary *geo = [locationOptions valueForKey:@"coords"];
         CLLocation *geoLocation = [[CLLocation alloc] initWithLatitude:[[geo valueForKey:@"latitude"] doubleValue]
                                                              longitude:[[geo valueForKey:@"longitude"] doubleValue]];
-
+        
         calendarEventAlarm.structuredLocation = [EKStructuredLocation locationWithTitle:[locationOptions valueForKey:@"title"]];
         calendarEventAlarm.structuredLocation.geoLocation = geoLocation;
         calendarEventAlarm.structuredLocation.radius = [[locationOptions valueForKey:@"radius"] doubleValue];
-
+        
         if ([[locationOptions valueForKey:@"proximity"] isEqualToString:@"enter"]) {
             calendarEventAlarm.proximity = EKAlarmProximityEnter;
         } else if ([[locationOptions valueForKey:@"proximity"] isEqualToString:@"leave"]) {
@@ -271,11 +272,11 @@ RCT_EXPORT_MODULE()
     if (!self.isAccessToEventStoreGranted) {
         return;
     }
-
+    
     EKEvent *calendarEvent = (EKEvent *)[self.eventStore calendarItemWithIdentifier:eventId];
     EKAlarm *calendarEventAlarm = [self createCalendarEventAlarm:alarm];
     [calendarEvent addAlarm:calendarEventAlarm];
-
+    
     [self saveEvent:calendarEvent];
 }
 
@@ -284,10 +285,10 @@ RCT_EXPORT_MODULE()
     if (!self.isAccessToEventStoreGranted) {
         return;
     }
-
+    
     EKEvent *calendarEvent = (EKEvent *)[self.eventStore calendarItemWithIdentifier:eventId];
     calendarEvent.alarms = [self createCalendarEventAlarms:alarms];
-
+    
     [self saveEvent:calendarEvent];
 }
 
@@ -297,7 +298,7 @@ RCT_EXPORT_MODULE()
 -(EKRecurrenceFrequency)frequencyMatchingName:(NSString *)name
 {
     EKRecurrenceFrequency recurrence = EKRecurrenceFrequencyDaily;
-
+    
     if ([name isEqualToString:@"weekly"]) {
         recurrence = EKRecurrenceFrequencyWeekly;
     } else if ([name isEqualToString:@"monthly"]) {
@@ -314,19 +315,19 @@ RCT_EXPORT_MODULE()
     EKRecurrenceEnd *recurrenceEnd = nil;
     NSInteger recurrenceInterval = 1;
     NSArray *validFrequencyTypes = @[@"daily", @"weekly", @"monthly", @"yearly"];
-
+    
     if (frequency && [validFrequencyTypes containsObject:frequency]) {
-
+        
         if (endDate) {
             recurrenceEnd = [EKRecurrenceEnd recurrenceEndWithEndDate:endDate];
         } else if (occurrence && occurrence > 0) {
             recurrenceEnd = [EKRecurrenceEnd recurrenceEndWithOccurrenceCount:occurrence];
         }
-
+        
         if (interval > 1) {
             recurrenceInterval = interval;
         }
-
+        
         rule = [[EKRecurrenceRule alloc] initRecurrenceWithFrequency:[self frequencyMatchingName:frequency]
                                                             interval:recurrenceInterval
                                                                  end:recurrenceEnd];
@@ -354,12 +355,12 @@ RCT_EXPORT_MODULE()
 - (NSMutableArray *)calendarSupportedAvailabilitiesFromMask:(EKCalendarEventAvailabilityMask)types
 {
     NSMutableArray *availabilitiesStrings = [[NSMutableArray alloc] init];
-
+    
     if(types & EKCalendarEventAvailabilityBusy) [availabilitiesStrings addObject:@"busy"];
     if(types & EKCalendarEventAvailabilityFree) [availabilitiesStrings addObject:@"free"];
     if(types & EKCalendarEventAvailabilityTentative) [availabilitiesStrings addObject:@"tentative"];
     if(types & EKCalendarEventAvailabilityUnavailable) [availabilitiesStrings addObject:@"unavailable"];
-
+    
     return availabilitiesStrings;
 }
 
@@ -386,19 +387,19 @@ RCT_EXPORT_MODULE()
     if([string isEqualToString:@"busy"]) {
         return EKEventAvailabilityBusy;
     }
-
+    
     if([string isEqualToString:@"free"]) {
         return EKEventAvailabilityFree;
     }
-
+    
     if([string isEqualToString:@"tentative"]) {
         return EKEventAvailabilityTentative;
     }
-
+    
     if([string isEqualToString:@"unavailable"]) {
         return EKEventAvailabilityUnavailable;
     }
-
+    
     return EKEventAvailabilityNotSupported;
 }
 
@@ -408,18 +409,18 @@ RCT_EXPORT_MODULE()
 - (NSArray *)serializeCalendarEvents:(NSArray *)calendarEvents
 {
     NSMutableArray *serializedCalendarEvents = [[NSMutableArray alloc] init];
-
+    
     for (EKEvent *event in calendarEvents) {
-
+        
         [serializedCalendarEvents addObject:[self serializeCalendarEvent:event]];
     }
-
+    
     return [serializedCalendarEvents copy];
 }
 
 - (NSDictionary *)serializeCalendarEvent:(EKEvent *)event
 {
-
+    
     NSDictionary *emptyCalendarEvent = @{
                                          _title: @"",
                                          _location: @"",
@@ -438,20 +439,19 @@ RCT_EXPORT_MODULE()
                                                  },
                                          _availability: @"",
                                          };
-
+    
     NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
     NSTimeZone *timeZone = [NSTimeZone timeZoneWithName:@"UTC"];
     [dateFormatter setTimeZone:timeZone];
     [dateFormatter setLocale:[NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"]];
     [dateFormatter setDateFormat: @"yyyy-MM-dd'T'HH:mm:ss.SSS'Z"];
-
-
+    
+    
     NSMutableDictionary *formedCalendarEvent = [NSMutableDictionary dictionaryWithDictionary:emptyCalendarEvent];
-
     if (event.calendarItemIdentifier) {
         [formedCalendarEvent setValue:event.calendarItemIdentifier forKey:_id];
     }
-
+    
     if (event.calendar) {
         [formedCalendarEvent setValue:@{
                                         @"id": event.calendar.calendarIdentifier,
@@ -462,31 +462,31 @@ RCT_EXPORT_MODULE()
                                         }
                                forKey:@"calendar"];
     }
-
+    
     if (event.title) {
         [formedCalendarEvent setValue:event.title forKey:_title];
     }
-
+    
     if (event.notes) {
         [formedCalendarEvent setValue:event.notes forKey:_notes];
     }
-
+    
     if (event.URL) {
         [formedCalendarEvent setValue:[event.URL absoluteString] forKey:_url];
     }
-
+    
     if (event.location) {
         [formedCalendarEvent setValue:event.location forKey:_location];
     }
-
+    
     if (event.hasAlarms) {
         NSMutableArray *alarms = [[NSMutableArray alloc] init];
-
+        
         for (EKAlarm *alarm in event.alarms) {
-
+            
             NSMutableDictionary *formattedAlarm = [[NSMutableDictionary alloc] init];
             NSString *alarmDate = nil;
-
+            
             if (alarm.absoluteDate) {
                 alarmDate = [dateFormatter stringFromDate:alarm.absoluteDate];
             } else if (alarm.relativeOffset) {
@@ -500,7 +500,7 @@ RCT_EXPORT_MODULE()
                                                                              sinceDate:calendarEventStartDate]];
             }
             [formattedAlarm setValue:alarmDate forKey:@"date"];
-
+            
             if (alarm.structuredLocation) {
                 NSString *proximity = nil;
                 switch (alarm.proximity) {
@@ -523,53 +523,57 @@ RCT_EXPORT_MODULE()
                                                    @"longitude": @(alarm.structuredLocation.geoLocation.coordinate.longitude)
                                                    }}
                                   forKey:@"structuredLocation"];
-
+                
             }
             [alarms addObject:formattedAlarm];
         }
         [formedCalendarEvent setValue:alarms forKey:_alarms];
     }
-
+    
     if (event.startDate) {
         [formedCalendarEvent setValue:[dateFormatter stringFromDate:event.startDate] forKey:_startDate];
     }
-
+    
+    if(event.organizer) {
+        [formedCalendarEvent setValue:[NSNumber numberWithBool:[event.organizer isCurrentUser]] forKey:_organizer];
+    }
+    
     if (event.endDate) {
         [formedCalendarEvent setValue:[dateFormatter stringFromDate:event.endDate] forKey:_endDate];
     }
-
+    
     if (event.occurrenceDate) {
         [formedCalendarEvent setValue:[dateFormatter stringFromDate:event.occurrenceDate] forKey:_occurrenceDate];
     }
-
+    
     [formedCalendarEvent setValue:[NSNumber numberWithBool:event.isDetached] forKey:_isDetached];
-
+    
     [formedCalendarEvent setValue:[NSNumber numberWithBool:event.allDay] forKey:_allDay];
-
+    
     if (event.hasRecurrenceRules) {
         EKRecurrenceRule *rule = [event.recurrenceRules objectAtIndex:0];
         NSString *frequencyType = [self nameMatchingFrequency:[rule frequency]];
         [formedCalendarEvent setValue:frequencyType forKey:_recurrence];
-
+        
         NSMutableDictionary *recurrenceRule = [NSMutableDictionary dictionaryWithDictionary:@{@"frequency": frequencyType}];
-
+        
         if ([rule interval]) {
             [recurrenceRule setValue:@([rule interval]) forKey:@"interval"];
         }
-
+        
         if ([[rule recurrenceEnd] endDate]) {
             [recurrenceRule setValue:[dateFormatter stringFromDate:[[rule recurrenceEnd] endDate]] forKey:@"endDate"];
         }
-
+        
         if ([[rule recurrenceEnd] occurrenceCount]) {
             [recurrenceRule setValue:@([[rule recurrenceEnd] occurrenceCount]) forKey:@"occurrence"];
         }
-
+        
         [formedCalendarEvent setValue:recurrenceRule forKey:_recurrenceRule];
     }
-
+    
     [formedCalendarEvent setValue:[self availabilityStringMatchingConstant:event.availability] forKey:_availability];
-
+    
     return [formedCalendarEvent copy];
 }
 
@@ -605,7 +609,7 @@ RCT_EXPORT_METHOD(authorizeEventStore:(RCTPromiseResolveBlock)resolve rejecter:(
 RCT_EXPORT_METHOD(findCalendars:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 {
     NSArray* calendars = [self.eventStore calendarsForEntityType:EKEntityTypeEvent];
-
+    
     if (!calendars) {
         reject(@"error", @"error finding calendars", nil);
     } else {
@@ -626,22 +630,22 @@ RCT_EXPORT_METHOD(findCalendars:(RCTPromiseResolveBlock)resolve rejecter:(RCTPro
 RCT_EXPORT_METHOD(fetchAllEvents:(NSDate *)startDate endDate:(NSDate *)endDate calendars:(NSArray *)calendars resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 {
     NSMutableArray *eventCalendars;
-
+    
     if (calendars.count) {
         eventCalendars = [[NSMutableArray alloc] init];
         NSArray *deviceCalendars = [self.eventStore calendarsForEntityType:EKEntityTypeEvent];
-
+        
         for (EKCalendar *calendar in deviceCalendars) {
             if ([calendars containsObject:calendar.calendarIdentifier]) {
                 [eventCalendars addObject:calendar];
             }
         }
     }
-
+    
     NSPredicate *predicate = [self.eventStore predicateForEventsWithStartDate:startDate
                                                                       endDate:endDate
                                                                     calendars:eventCalendars];
-
+    
     __weak RNCalendarEvents *weakSelf = self;
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         NSArray *calendarEvents = [[weakSelf.eventStore eventsMatchingPredicate:predicate] sortedArrayUsingSelector:@selector(compareStartDateWithEvent:)];
@@ -660,7 +664,7 @@ RCT_EXPORT_METHOD(fetchAllEvents:(NSDate *)startDate endDate:(NSDate *)endDate c
 RCT_EXPORT_METHOD(findEventById:(NSString *)eventId resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 {
     NSDictionary *response = [self findById:eventId];
-
+    
     if (!response) {
         reject(@"error", @"error finding event", nil);
     } else {
@@ -672,9 +676,9 @@ RCT_EXPORT_METHOD(saveEvent:(NSString *)title details:(NSDictionary *)details re
 {
     NSMutableDictionary *options = [NSMutableDictionary dictionaryWithDictionary:details];
     [options setValue:title forKey:_title];
-
+    
     NSDictionary *response = [self buildAndSaveEvent:options];
-
+    
     if ([response valueForKey:@"success"] != [NSNull null]) {
         resolve([response valueForKey:@"success"]);
     } else {
@@ -685,7 +689,7 @@ RCT_EXPORT_METHOD(saveEvent:(NSString *)title details:(NSDictionary *)details re
 RCT_EXPORT_METHOD(removeEvent:(NSString *)eventId resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 {
     NSDictionary *response = [self deleteEvent:eventId span:EKSpanThisEvent];
-
+    
     if ([response valueForKey:@"success"] != [NSNull null]) {
         resolve([response valueForKey:@"success"]);
     } else {
@@ -705,3 +709,4 @@ RCT_EXPORT_METHOD(removeFutureEvents:(NSString *)eventId resolver:(RCTPromiseRes
 }
 
 @end
+
