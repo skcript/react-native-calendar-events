@@ -24,6 +24,7 @@ static NSString *const _occurrenceDate = @"occurrenceDate";
 static NSString *const _isDetached = @"isDetached";
 static NSString *const _availability = @"availability";
 static NSString *const _organizer = @"organizer";
+static NSString *const _attendees = @"attendees";
 
 @implementation RNCalendarEvents
 
@@ -85,6 +86,7 @@ RCT_EXPORT_MODULE()
     NSString *notes = [RCTConvert NSString:details[_notes]];
     NSString *url = [RCTConvert NSString:details[_url]];
     NSArray *alarms = [RCTConvert NSArray:details[_alarms]];
+    NSArray *attendees = [RCTConvert NSArray:details[_attendees]];
     NSString *recurrence = [RCTConvert NSString:details[_recurrence]];
     NSDictionary *recurrenceRule = [RCTConvert NSDictionary:details[_recurrenceRule]];
     NSString *availability = [RCTConvert NSString:details[_availability]];
@@ -132,6 +134,10 @@ RCT_EXPORT_MODULE()
     if (alarms) {
         calendarEvent.alarms = [self createCalendarEventAlarms:alarms];
     }
+    
+    //    if(attendees) {
+    //        calendarEvent.attendees = attendees;
+    //    }
     
     if (recurrence) {
         EKRecurrenceRule *rule = [self createRecurrenceRule:recurrence interval:0 occurrence:0 endDate:nil];
@@ -430,6 +436,7 @@ RCT_EXPORT_MODULE()
                                          _notes: @"",
                                          _url: @"",
                                          _alarms: [NSArray array],
+                                         _attendees: [NSArray array],
                                          _recurrence: @"",
                                          _recurrenceRule: @{
                                                  @"frequency": @"",
@@ -536,6 +543,26 @@ RCT_EXPORT_MODULE()
     
     if(event.organizer) {
         [formedCalendarEvent setValue:[NSNumber numberWithBool:[event.organizer isCurrentUser]] forKey:_organizer];
+    }
+    if(event.attendees) {
+        NSMutableArray *participants = [[NSMutableArray alloc] init];
+        
+        for (NSInteger i = 0; i< event.attendees.count - 1; i++) {
+            NSMutableDictionary *formattedAttendees = [[NSMutableDictionary alloc] init];
+            if([event.attendees[i] isCurrentUser] == false) {
+                [formattedAttendees setValue:@{
+                                               @"name": event.attendees[i].name,
+                                               }
+                                      forKey:@"attendee"];
+                NSLog(@"%@", event.attendees[i]);
+                [participants addObject:event.attendees[i].name];
+            }
+            
+        }
+        
+        
+        
+        [formedCalendarEvent setValue: participants forKey:_attendees];
     }
     
     if (event.endDate) {
