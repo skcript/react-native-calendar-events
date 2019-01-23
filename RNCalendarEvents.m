@@ -51,18 +51,18 @@ RCT_EXPORT_MODULE()
     EKAuthorizationStatus status = [EKEventStore authorizationStatusForEntityType:EKEntityTypeEvent];
     
     switch (status) {
-        case EKAuthorizationStatusDenied:
+            case EKAuthorizationStatusDenied:
             self.isAccessToEventStoreGranted = NO;
             return @"denied";
-        case EKAuthorizationStatusRestricted:
+            case EKAuthorizationStatusRestricted:
             self.isAccessToEventStoreGranted = NO;
             return @"restricted";
-        case EKAuthorizationStatusAuthorized:
+            case EKAuthorizationStatusAuthorized:
             self.isAccessToEventStoreGranted = YES;
             return @"authorized";
-        case EKAuthorizationStatusNotDetermined: {
-            return @"undetermined";
-        }
+            case EKAuthorizationStatusNotDetermined: {
+                return @"undetermined";
+            }
     }
 }
 
@@ -344,11 +344,11 @@ RCT_EXPORT_MODULE()
 -(NSString *)nameMatchingFrequency:(EKRecurrenceFrequency)frequency
 {
     switch (frequency) {
-        case EKRecurrenceFrequencyWeekly:
+            case EKRecurrenceFrequencyWeekly:
             return @"weekly";
-        case EKRecurrenceFrequencyMonthly:
+            case EKRecurrenceFrequencyMonthly:
             return @"monthly";
-        case EKRecurrenceFrequencyYearly:
+            case EKRecurrenceFrequencyYearly:
             return @"yearly";
         default:
             return @"daily";
@@ -373,15 +373,15 @@ RCT_EXPORT_MODULE()
 - (NSString *)availabilityStringMatchingConstant:(EKEventAvailability)constant
 {
     switch(constant) {
-        case EKEventAvailabilityNotSupported:
+            case EKEventAvailabilityNotSupported:
             return @"notSupported";
-        case EKEventAvailabilityBusy:
+            case EKEventAvailabilityBusy:
             return @"busy";
-        case EKEventAvailabilityFree:
+            case EKEventAvailabilityFree:
             return @"free";
-        case EKEventAvailabilityTentative:
+            case EKEventAvailabilityTentative:
             return @"tentative";
-        case EKEventAvailabilityUnavailable:
+            case EKEventAvailabilityUnavailable:
             return @"unavailable";
         default:
             return @"notSupported";
@@ -470,6 +470,31 @@ RCT_EXPORT_MODULE()
                                forKey:@"calendar"];
     }
     
+    if(event.attendees) {
+        NSMutableArray *participants = [[NSMutableArray alloc] init];
+        
+        for (NSInteger i = 0; i< event.attendees.count; i++) {
+            NSMutableDictionary *formattedAttendees = [[NSMutableDictionary alloc] init];
+            if([event.attendees[i] isCurrentUser] == false) {
+                [formattedAttendees setValue:@{
+                                               @"name": event.attendees[i].name,
+                                               }
+                                      forKey:@"attendee"];
+                NSLog(@"%@", event.attendees[i]);
+                [participants addObject:event.attendees[i].name];
+            }
+            
+            if(i == event.attendees.count - 1) {
+                NSLog(@"am here");
+            }
+            
+        }
+
+        [formedCalendarEvent setValue: participants forKey:_attendees];
+        
+        
+    }
+    
     if (event.title) {
         [formedCalendarEvent setValue:event.title forKey:_title];
     }
@@ -511,10 +536,10 @@ RCT_EXPORT_MODULE()
             if (alarm.structuredLocation) {
                 NSString *proximity = nil;
                 switch (alarm.proximity) {
-                    case EKAlarmProximityEnter:
+                        case EKAlarmProximityEnter:
                         proximity = @"enter";
                         break;
-                    case EKAlarmProximityLeave:
+                        case EKAlarmProximityLeave:
                         proximity = @"leave";
                         break;
                     default:
@@ -544,26 +569,7 @@ RCT_EXPORT_MODULE()
     if(event.organizer) {
         [formedCalendarEvent setValue:[NSNumber numberWithBool:[event.organizer isCurrentUser]] forKey:_organizer];
     }
-    if(event.attendees) {
-        NSMutableArray *participants = [[NSMutableArray alloc] init];
-        
-        for (NSInteger i = 0; i< event.attendees.count - 1; i++) {
-            NSMutableDictionary *formattedAttendees = [[NSMutableDictionary alloc] init];
-            if([event.attendees[i] isCurrentUser] == false) {
-                [formattedAttendees setValue:@{
-                                               @"name": event.attendees[i].name,
-                                               }
-                                      forKey:@"attendee"];
-                NSLog(@"%@", event.attendees[i]);
-                [participants addObject:event.attendees[i].name];
-            }
-            
-        }
-        
-        
-        
-        [formedCalendarEvent setValue: participants forKey:_attendees];
-    }
+    
     
     if (event.endDate) {
         [formedCalendarEvent setValue:[dateFormatter stringFromDate:event.endDate] forKey:_endDate];
@@ -736,4 +742,3 @@ RCT_EXPORT_METHOD(removeFutureEvents:(NSString *)eventId resolver:(RCTPromiseRes
 }
 
 @end
-
